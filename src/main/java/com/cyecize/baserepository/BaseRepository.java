@@ -1,7 +1,5 @@
 package com.cyecize.baserepository;
 
-import com.cyecize.baserepository.utils.ActionResult;
-
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.criteria.CriteriaBuilder;
@@ -22,6 +20,18 @@ import java.util.function.Consumer;
  * @param <ID> - the type of the primary key.
  */
 public abstract class BaseRepository<E, ID> {
+
+    public static final class ActionResult<T> {
+        private T result;
+
+        public T get() {
+            return this.result;
+        }
+
+        public void set(T result) {
+            this.result = result;
+        }
+    }
 
     protected final EntityManager entityManager;
 
