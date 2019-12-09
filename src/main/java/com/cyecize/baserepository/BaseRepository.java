@@ -1,12 +1,19 @@
 package com.cyecize.baserepository;
 
+import com.cyecize.baserepository.pagination.Page;
+import com.cyecize.baserepository.pagination.PageImpl;
+import com.cyecize.baserepository.pagination.Pageable;
+
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
+import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -81,6 +88,11 @@ public abstract class BaseRepository<E, ID> {
         }));
     }
 
+    public Page<E> findAll(Pageable pageable) {
+        return this.queryBuilderList((eCriteriaQuery, eRoot) -> {
+        }, pageable);
+    }
+
     protected synchronized <T> ActionResult<T> execute(Consumer<ActionResult<T>> invoker, Class<? extends T> returnType) {
         this.criteriaBuilder = this.entityManager.getCriteriaBuilder();
 
@@ -125,7 +137,7 @@ public abstract class BaseRepository<E, ID> {
     }
 
     @SuppressWarnings("unchecked")
-    protected <T> List<T> queryBuilderList(BiConsumer<CriteriaQuery<E>, Root<E>> invoker, Class<T> returnType) {
+    protected Page<E> queryBuilderList(BiConsumer<CriteriaQuery<E>, Root<E>> invoker, Pageable pageable) {
         return this.execute(ar -> {
             final CriteriaQuery<E> criteria = this.criteriaBuilder.createQuery(this.persistentClass);
             final Root<E> root = criteria.from(this.persistentClass);
@@ -133,12 +145,22 @@ public abstract class BaseRepository<E, ID> {
 
             invoker.accept(criteria, root);
 
-            ar.set(this.entityManager.createQuery(criteria).getResultList());
-        }, List.class).get();
+            final Long totalCount = this.getTotalCount(root, criteria);
+            final List<E> items = this.addPagination(
+                    pageable,
+                    this.entityManager.createQuery(criteria)
+            ).getResultList();
+
+            ar.set(new PageImpl(
+                    pageable,
+                    items,
+                    totalCount
+            ));
+        }, Page.class).get();
     }
 
     protected List<E> queryBuilderList(BiConsumer<CriteriaQuery<E>, Root<E>> invoker) {
-        return this.queryBuilderList(invoker, this.persistentClass);
+        return this.queryBuilderList(invoker, Pageable.of(1, Integer.MAX_VALUE)).getItems();
     }
 
     private ParameterizedType getParameterizedType() {
@@ -147,5 +169,26 @@ public abstract class BaseRepository<E, ID> {
         }
 
         return (ParameterizedType) this.getClass().getSuperclass().getGenericSuperclass();
+    }
+
+    private Query addPagination(Pageable pageable, Query query) {
+        return query.setFirstResult((pageable.getPage() - 1) * pageable.getSize())
+                .setMaxResults(pageable.getSize());
+    }
+
+    private Long getTotalCount(Root<E> rootEntity, CriteriaQuery<E> entityQuery) {
+        final CriteriaQuery<Long> countQuery = this.criteriaBuilder.createQuery(Long.class);
+
+        final Set<Root<?>> availableRoots = BaseRepositoryUtils.getRootsForCriteriaQuery(entityQuery);
+        final Set<Root<?>> countQueryRoots = BaseRepositoryUtils.getRootsForCriteriaQuery(countQuery);
+        countQueryRoots.addAll(availableRoots);
+
+        countQuery.select(this.criteriaBuilder.count(rootEntity));
+        if (entityQuery.getRestriction() != null) {
+            countQuery.where(entityQuery.getRestriction());
+        }
+
+        TypedQuery<Long> query = this.entityManager.createQuery(countQuery);
+        return query.getSingleResult();
     }
 }

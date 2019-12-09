@@ -1,6 +1,8 @@
 package com.cyecize.demo.repositories;
 
 import com.cyecize.baserepository.BaseRepository;
+import com.cyecize.baserepository.pagination.Page;
+import com.cyecize.baserepository.pagination.Pageable;
 import com.cyecize.demo.entities.User;
 
 import javax.persistence.EntityManager;
@@ -37,6 +39,15 @@ public class UserRepository extends BaseRepository<User, Long> {
         return super.queryBuilderList((userCriteriaQuery, userRoot) -> userCriteriaQuery.where(
                 super.criteriaBuilder.equal(userRoot.get(HOMETOWN_FIELD_NAME), hometown)
         ));
+    }
+
+    /**
+     * This method is making use of the pagination support.
+     */
+    public Page<User> findByHometown(String hometown, Pageable pageable) {
+        return super.queryBuilderList((userCriteriaQuery, userRoot) -> userCriteriaQuery.where(
+                super.criteriaBuilder.equal(userRoot.get(HOMETOWN_FIELD_NAME), hometown)
+        ), pageable);
     }
 
     /**

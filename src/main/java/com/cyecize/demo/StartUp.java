@@ -1,7 +1,9 @@
 package com.cyecize.demo;
 
+import com.cyecize.baserepository.pagination.Pageable;
 import com.cyecize.demo.entities.User;
 import com.cyecize.demo.repositories.UserRepository;
+import com.google.gson.Gson;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -9,6 +11,9 @@ import javax.persistence.Persistence;
 import java.util.Scanner;
 
 public class StartUp {
+
+    private static final Gson gson = new Gson();
+
     public static void main(String[] args) {
         final EntityManagerFactory emf = Persistence.createEntityManagerFactory("baseRepositoryDemo");
         final EntityManager entityManager = emf.createEntityManager();
@@ -33,27 +38,41 @@ public class StartUp {
                         user.setHometown(tokens[2]);
 
                         userRepository.persist(user);
-                        System.out.println(user);
+                        print(user);
                         break;
-                        
+
                     case "all":
-                        System.out.println(userRepository.findAll());
+                        print(userRepository.findAll());
+                        break;
+
+                    case "allpage":
+                        print(userRepository.findAll(Pageable.of(
+                                Integer.parseInt(tokens[1]),
+                                Integer.parseInt(tokens[2])
+                        )));
                         break;
 
                     case "id":
-                        System.out.println(userRepository.find(Long.parseLong(tokens[1])));
+                        print(userRepository.find(Long.parseLong(tokens[1])));
                         break;
 
                     case "username":
-                        System.out.println(userRepository.findByUsername(tokens[1]));
+                        print(userRepository.findByUsername(tokens[1]));
                         break;
 
                     case "hometown":
-                        System.out.println(userRepository.findByHometown(tokens[1]));
+                        print(userRepository.findByHometown(tokens[1]));
+                        break;
+
+                    case "hometownpage":
+                        print(userRepository.findByHometown(tokens[1], Pageable.of(
+                                Integer.parseInt(tokens[2]),
+                                Integer.parseInt(tokens[3])
+                        )));
                         break;
 
                     case "hometownnumber":
-                        System.out.println(userRepository.findNumberOfUsersForHometown(tokens[1]));
+                        print(userRepository.findNumberOfUsersForHometown(tokens[1]));
                         break;
 
                     case "newhometown":
@@ -62,7 +81,7 @@ public class StartUp {
                         else {
                             userToEdit.setHometown(tokens[2]);
                             userRepository.merge(userToEdit);
-                            System.out.println(userToEdit);
+                            print(userToEdit);
                         }
                         break;
                 }
@@ -76,14 +95,20 @@ public class StartUp {
         emf.close();
     }
 
+    private static void print(Object o) {
+        System.out.println(gson.toJson(o));
+    }
+
     private static void printCommandsInfo() {
         System.out.println("Available Commands: ");
         System.out.println("break - close the app");
         System.out.println("create {username} {hometown} - create new user");
         System.out.println("all - find all users");
+        System.out.println("allPage {page} {size} - find all users paginated");
         System.out.println("id {id} - find by id");
         System.out.println("username {username} - find by username");
         System.out.println("hometown {hometown} - find by hometown");
+        System.out.println("hometownPage {hometown} {page} {size} - find by hometown paginated");
         System.out.println("hometownNumber {hometown} - find number of users for hometown");
         System.out.println("newHometown {username} {new hometown}");
     }
